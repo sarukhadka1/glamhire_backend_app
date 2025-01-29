@@ -2,151 +2,83 @@ const userModel = require('../models/userModel')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const sendOtp = require ('../service/sendOtp');
-const PASSWORD_POLICY = {
-  minLength: 8,
-  maxLength: 20,
-  regex: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, // Enforce complexity
-};
+// const PASSWORD_POLICY = {
+//   minLength: 8,
+//   maxLength: 20,
+//   regex: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, // Enforce complexity
+// };
 
-const PASSWORD_HISTORY_LIMIT = 5; // Limit for previous passwords
-const PASSWORD_EXPIRY_DAYS = 90; // Password expiry time (in days)
-
-const createUser = async (req, res) => {
-  const { firstName, lastName, email, password, phone } = req.body;
-
-  if (!firstName || !lastName || !email || !password || !phone) {
-    return res.status(400).json({
-      success: false,
-      message: "Please enter all fields!",
-    });
-  }
-
-  // Validate password
-  if (!isPasswordValid(password)) {
-    return res.status(400).json({
-      success: false,
-      message: "Password must meet complexity requirements!",
-    });
-  }
-
-  try {
-    const existingUser = await userModel.findOne({ email });
-
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "User already exists!",
-      });
-    }
-
-    // Hash the password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Save the new user
-    const newUser = new userModel({
-      firstName,
-      lastName,
-      email,
-      phone,
-      password: hashedPassword,
-      passwordHistory: [hashedPassword], // Save the initial password
-      passwordLastChanged: new Date(),
-    });
-
-    await newUser.save();
-
-    res.status(201).json({
-      success: true,
-      message: "User created successfully!",
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error!",
-    });
-  }
-};
-
+// const PASSWORD_HISTORY_LIMIT = 5; // Limit for previous passwords
+// const PASSWORD_EXPIRY_DAYS = 90; // Password expiry time (in days)
 
 // const createUser = async (req, res) => {
-//     // res.send("Create user API is working!")
+//   const { firstName, lastName, email, password, phone } = req.body;
 
-//     //1.Check incoming data
-//     console.log(req.body);
+//   if (!firstName || !lastName || !email || !password || !phone) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Please enter all fields!",
+//     });
+//   }
 
-//     //2.Destructure the incoming data
-//     const { firstName, lastName, email, password, phone } = req.body;
+//   // Validate password
+//   if (!isPasswordValid(password)) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Password must meet complexity requirements!",
+//     });
+//   }
 
-//     //3.Validate the data
-//     if (!firstName || !lastName || !email || !password || !phone) {
-//         // res.send("Please enter all fields!")
-//         return res.json({
-//             "success": false,
-//             "message": "Please enter all fields!"
-//         });
+//   try {
+//     const existingUser = await userModel.findOne({ email });
+
+//     if (existingUser) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "User already exists!",
+//       });
 //     }
 
-//     // Validate phone number format (basic example, adjust regex as needed)
-//     const phoneRegex = /^[0-9]{10}$/;
-//     if (!phoneRegex.test(phone)) {
-//         return res.json({
-//             "success": false,
-//             "message": "Please enter a valid phone number!"
-//         });
-//     }
+//     // Hash the password
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedPassword = await bcrypt.hash(password, salt);
 
-//     //4.Error Handling(try catch)
-//     try {
-//         //5.Check if the user is already registered
-//         const existingUser = await userModel.findOne({ email: email })
-//         //5.1 If user found: send response
-//         if (existingUser) {
-//             return res.json({
-//                 "success": false,
-//                 "message": "User already exists!"
-//             })
-//         }
+//     // Save the new user
+//     const newUser = new userModel({
+//       firstName,
+//       lastName,
+//       email,
+//       phone,
+//       password: hashedPassword,
+//       passwordHistory: [hashedPassword], // Save the initial password
+//       passwordLastChanged: new Date(),
+//     });
 
-//         // Hashing / encryption of the password
-//         const randomSalt = await bcrypt.genSalt(10)
-//         const hashedPassword = await bcrypt.hash(password, randomSalt)
+//     await newUser.save();
 
-//         //5.2 If user is new:
+//     res.status(201).json({
+//       success: true,
+//       message: "User created successfully!",
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error!",
+//     });
+//   }
+// };
 
-//         const newUser = new userModel({
-//             //Field : Client's Value
-//             firstName: firstName,
-//             lastName: lastName,
-//             email: email,
-//             phone: phone,
-//             password: hashedPassword
-            
-//         })
 
-//         //Save to database
-//         await newUser.save()
 
-//         //send the response
-//         res.status(201).json({
-//             "success": true,
-//             "message": "User Created Successfully!"
-//         })
-//     } catch (error) {
-//         console.log(error)
-//         res.status(400).json({
-//             "success": false,
-//             "message": "Internal server Error!"
-//         })
-//     }
 
-// }
+// const MAX_LOGIN_ATTEMPTS = 5; // Maximum allowed login attempts before lockout
+// const LOCK_TIME = 15 * 60 * 1000; // Lockout time in milliseconds (15 minutes)
 
 // const loginUser = async (req, res) => {
 //   const { email, password } = req.body;
 
-//   if (!email || !password) {
+//   if (!email || !password ) {
 //     return res.status(400).json({
 //       success: false,
 //       message: "Please enter all fields!",
@@ -163,35 +95,30 @@ const createUser = async (req, res) => {
 //       });
 //     }
 
-//     // Check if password has expired
-//     if (isPasswordExpired(user.passwordLastChanged)) {
-//       return res.status(403).json({
-//         success: false,
-//         message: "Password has expired. Please change your password.",
-//       });
-//     }
-
-//     // Check if account is locked due to multiple failed login attempts
+//     // Check if account is locked
 //     if (user.lockUntil && user.lockUntil > Date.now()) {
-//       const remainingTime = Math.ceil((user.lockUntil - Date.now()) / 1000);
+//       const remainingTime = Math.ceil((user.lockUntil - Date.now()) / 1000); // Lock time in seconds
 //       return res.status(403).json({
 //         success: false,
-//         message: "Account is locked.",
-//         remainingTime,
+//         message: "Account is locked due to multiple failed login attempts.",
+//         remainingTime, // Remaining lockout time
 //       });
 //     }
 
+//     // Check password validity
 //     const isValidPassword = await bcrypt.compare(password, user.password);
-
+    
 //     if (!isValidPassword) {
 //       user.loginAttempts = (user.loginAttempts || 0) + 1;
 
+//       // Lock account if max attempts exceeded
 //       if (user.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-//         user.lockUntil = Date.now() + LOCK_TIME;
+//         user.lockUntil = Date.now() + LOCK_TIME; // Set lock time
 //         await user.save();
 //         return res.status(403).json({
 //           success: false,
 //           message: "Account locked due to multiple failed login attempts.",
+//           remainingTime: LOCK_TIME / 1000, // Lock time in seconds
 //         });
 //       }
 
@@ -199,16 +126,17 @@ const createUser = async (req, res) => {
 //       return res.status(400).json({
 //         success: false,
 //         message: "Incorrect password!",
+//         remainingAttempts: MAX_LOGIN_ATTEMPTS - user.loginAttempts, // Remaining attempts
 //       });
 //     }
 
-//     // Reset login attempts on successful login
+//     // Reset login attempts and lock status on successful login
 //     user.loginAttempts = 0;
 //     user.lockUntil = undefined;
 //     await user.save();
 
 //     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-//       expiresIn: "1h",
+//       expiresIn: "1h", // Token expiration time
 //     });
 
 //     res.status(200).json({
@@ -232,13 +160,120 @@ const createUser = async (req, res) => {
 //   }
 // };
 
-const MAX_LOGIN_ATTEMPTS = 5; // Maximum allowed login attempts before lockout
-const LOCK_TIME = 15 * 60 * 1000; // Lockout time in milliseconds (15 minutes)
 
+const LOCKOUT_CONFIG = [
+  { attempts: 5, lockTime: 15 * 1000 },        // Lock 15s after 5 attempts
+  { attempts: 10, lockTime: 60 * 1000 },       // Lock 1m after 10 attempts
+  { attempts: 15, lockTime: 5 * 60 * 1000 },   // Lock 5m after 15 attempts
+  { attempts: Infinity, lockTime: 60 * 60 * 1000 }, // Lock 1h after 20+ attempts
+];
+
+const getLockTime = (attempts) => {
+  for (const config of LOCKOUT_CONFIG) {
+    if (attempts <= config.attempts) {
+      return config.lockTime;
+    }
+  }
+  return 0;
+};
+
+// ----------------------------------------
+// PASSWORD POLICY & HISTORY LIMIT
+// ----------------------------------------
+const PASSWORD_POLICY = {
+  minLength: 8,
+  maxLength: 20,
+  // Enforces: at least 1 uppercase, 1 lowercase, 1 digit, 1 special char
+  regex: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+};
+
+const PASSWORD_HISTORY_LIMIT = 5;
+const PASSWORD_EXPIRY_DAYS = 90; // (if you need password expiry tracking)
+
+// Helper to validate the password
+function isPasswordValid(password) {
+  if (
+    password.length < PASSWORD_POLICY.minLength ||
+    password.length > PASSWORD_POLICY.maxLength ||
+    !PASSWORD_POLICY.regex.test(password)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+// ----------------------------------------
+// CREATE USER (same structure as sample,
+// but with your policy checks)
+// ----------------------------------------
+const createUser = async (req, res) => {
+  const { firstName, lastName, email, phone, password } = req.body;
+
+  // Check required fields
+  if (!firstName || !lastName || !email || !phone || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Please enter all fields!",
+    });
+  }
+
+  // Validate password complexity
+  if (!isPasswordValid(password)) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must meet complexity requirements!",
+    });
+  }
+
+  try {
+    // Check if user already exists
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User already exists!",
+      });
+    }
+
+    // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create a new user with initial password history
+    const newUser = new userModel({
+      firstName,
+      lastName,
+      email,
+      phone,
+      password: hashedPassword,
+      // Keep track of password history & when it was last changed
+      passwordHistory: [hashedPassword],
+      passwordLastChanged: new Date(),
+    });
+
+    await newUser.save();
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully!",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error!",
+    });
+  }
+};
+
+// ----------------------------------------
+// LOGIN USER (Tiered lockout from sample)
+// ----------------------------------------
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password ) {
+  // Check required fields
+  if (!email || !password) {
     return res.status(400).json({
       success: false,
       message: "Please enter all fields!",
@@ -246,8 +281,8 @@ const loginUser = async (req, res) => {
   }
 
   try {
+    // Find user by email
     const user = await userModel.findOne({ email });
-
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -255,48 +290,67 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Check if account is locked
+    // Check if user is currently locked
     if (user.lockUntil && user.lockUntil > Date.now()) {
-      const remainingTime = Math.ceil((user.lockUntil - Date.now()) / 1000); // Lock time in seconds
+      // Lock is active
+      const remainingTime = Math.ceil((user.lockUntil - Date.now()) / 1000);
       return res.status(403).json({
         success: false,
         message: "Account is locked due to multiple failed login attempts.",
-        remainingTime, // Remaining lockout time
+        remainingTime,
       });
+    } else if (user.lockUntil && user.lockUntil <= Date.now()) {
+      // Lock time has passed; remove the lock, but DO NOT reset attempts
+      user.lockUntil = null;
+      await user.save();
     }
 
-    // Check password validity
+    // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
-    
     if (!isValidPassword) {
+      // Increment loginAttempts
       user.loginAttempts = (user.loginAttempts || 0) + 1;
 
-      // Lock account if max attempts exceeded
-      if (user.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-        user.lockUntil = Date.now() + LOCK_TIME; // Set lock time
+      // Determine appropriate lock time
+      const lockTime = getLockTime(user.loginAttempts);
+
+      // If the user has hit the first threshold (5 attempts) or more
+      if (lockTime > 0 && user.loginAttempts >= LOCKOUT_CONFIG[0].attempts) {
+        user.lockUntil = Date.now() + lockTime;
         await user.save();
         return res.status(403).json({
           success: false,
           message: "Account locked due to multiple failed login attempts.",
-          remainingTime: LOCK_TIME / 1000, // Lock time in seconds
+          remainingTime: lockTime / 1000, // seconds
         });
       }
 
+      // Still below lock threshold -> just save attempts
       await user.save();
+
+      // Calculate how many attempts remain until next threshold
+      const currentTier = LOCKOUT_CONFIG.find(
+        (cfg) => user.loginAttempts <= cfg.attempts
+      );
+      const remainingAttempts = currentTier
+        ? currentTier.attempts - user.loginAttempts
+        : 0;
+
       return res.status(400).json({
         success: false,
         message: "Incorrect password!",
-        remainingAttempts: MAX_LOGIN_ATTEMPTS - user.loginAttempts, // Remaining attempts
+        remainingAttempts,
       });
     }
 
-    // Reset login attempts and lock status on successful login
+    // If password is valid -> reset attempts & lock
     user.loginAttempts = 0;
-    user.lockUntil = undefined;
+    user.lockUntil = null;
     await user.save();
 
+    // Generate JWT token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h", // Token expiration time
+      expiresIn: "1h",
     });
 
     res.status(200).json({
@@ -320,74 +374,6 @@ const loginUser = async (req, res) => {
   }
 };
 
-
-
-// //login function
-// const loginUser = async (req, res) => {
-//     // res.send("Login API is working!")
-
-//     //Check incoming data
-//     console.log(req.body)
-
-//     //Destructuring
-//     const { email, password } = req.body;
-
-//     //Validation
-//     if (!email || !password) {
-//         return res.status(400).json({
-//             "success": false,
-//             "message": "Please enter all fields!"
-//         })
-//     }
-
-
-//     //try catch
-//     try {
-
-//         //find user (email)
-//         const user = await userModel.findOne({ email: email })
-//         //found data: firstName, lastName, email, password
-
-//         //not found(error message)
-//         if (!user) {
-//             return res.status(400).json({
-//                 "success": false,
-//                 "message": "User does not exist!"
-//             })
-//         }
-
-//         //compare password(bcrypt)
-//         const isValidPassword = await bcrypt.compare(password, user.password)
-
-//         //not valid(error)
-//         if (!isValidPassword) {
-//             return res.status(400).json({
-//                 "success": false,
-//                 "message": "Password not matched!"
-//             })
-//         }
-//         //token(Generate - user Data+KEY)  
-//         const token = await jwt.sign(
-//             { id: user._id },
-//             process.env.JWT_SECRET
-//         )
-//         //response (token, user data)
-//         res.status(201).json({
-//             "success": true,
-//             "message": "User logged in successfully!",
-//             "token": token,
-//             "userData": user
-//         })
-
-
-//     } catch (error) {
-//         console.log(error)
-//         return res.status(400).json({
-//             "success": false,
-//             "message": "Please enter all fields!"
-//         })
-//     }
-// }
 
 const changePassword = async (req, res) => {
   const { email, currentPassword, newPassword } = req.body;
@@ -516,14 +502,14 @@ const updateUserProfile = async (req, res) => {
     }
 };
 
-// Function to validate password strength
-const isPasswordValid = (password) => {
-  return (
-    password.length >= PASSWORD_POLICY.minLength &&
-    password.length <= PASSWORD_POLICY.maxLength &&
-    PASSWORD_POLICY.regex.test(password)
-  );
-};
+// // Function to validate password strength
+// const isPasswordValid = (password) => {
+//   return (
+//     password.length >= PASSWORD_POLICY.minLength &&
+//     password.length <= PASSWORD_POLICY.maxLength &&
+//     PASSWORD_POLICY.regex.test(password)
+//   );
+// };
 
 // Function to check if the password is reused
 const isPasswordReused = async (user, newPassword) => {
