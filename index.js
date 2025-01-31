@@ -49,6 +49,7 @@ app.use('/api/artist',require('./routes/artistRoutes'));
 app.use('/api/rating',require("./routes/reviewRoutes"));
 app.use('/api/wishlist',require("./routes/wishlistRoutes"));
 app.use('/api/contact', require('./routes/contactRoutes'))
+app.use('/api/payment', require('./routes/PaymentRoutes'))
 
 
 //Starting the server
