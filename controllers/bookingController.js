@@ -5,10 +5,10 @@ const Artist = require('../models/artistModel');
 // Create Booking
 // Backend: bookingControllers.js
 const createBooking = async (req, res) => {
-  const { userId, artistId, date, time } = req.body;
+  const { artistId, date, time } = req.body;
  
   // Validate input
-  if (!userId || !artistId || !date || !time) {
+  if ( !artistId || !date || !time) {
     return res.status(400).json({ success: false, message: 'All fields are required' });
   }
  
@@ -20,7 +20,16 @@ const createBooking = async (req, res) => {
     // }
  
     // Create new booking
-    const newBooking = new Booking({ user: userId, artist: artistId, date, time });
+    const artist = await Artist.findById(artistId);
+    if (!artist) {
+      return res.status(404).json({ success: false, message: 'Artist not found' });
+    }
+
+    const newBooking = new Booking({ 
+      user: req.user._id, 
+      artist: artistId, 
+      date, 
+      time });
     await newBooking.save();
  
     res.status(201).json({ success: true, message: 'Booking created successfully', booking: newBooking });
