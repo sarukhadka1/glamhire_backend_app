@@ -6,6 +6,7 @@ const acceptFormData = require('express-fileupload');
 const https = require('https')
 const fs = require('fs')
 const path = require('path');
+const mongoSanitize = require("express-mongo-sanitize");
 
 
 // Creating an express application
@@ -13,11 +14,19 @@ const app = express();
 
 //Configure Cors Policy
 const corsOptions = {
-    origin: true,
-    credentials: true,
-    optionSuccessStatus: 200
+  origin: true,
+  credentials: true,
+  optionSuccessStatus: 200
 }
 app.use(cors(corsOptions));
+
+// **Apply express-mongo-sanitize middleware**
+app.use(
+  mongoSanitize({
+    // Optionally, replace prohibited characters with an underscore
+    replaceWith: '_',
+  })
+);
 
 //Express Json Config
 app.use(express.json());
@@ -39,29 +48,29 @@ connectDatabase();
 
 //Making a test endpoint
 app.get("/test", (req, res) => {
-    res.send("Test api is working..");
+  res.send("Test api is working..");
 });
 
 // Configuring Routes of User
 app.use('/api/user', require('./routes/userRoutes'));
-app.use('/api/booking',require('./routes/bookingRoutes'))
-app.use('/api/artist',require('./routes/artistRoutes'));
-app.use('/api/rating',require("./routes/reviewRoutes"));
-app.use('/api/wishlist',require("./routes/wishlistRoutes"));
+app.use('/api/booking', require('./routes/bookingRoutes'))
+app.use('/api/artist', require('./routes/artistRoutes'));
+app.use('/api/rating', require("./routes/reviewRoutes"));
+app.use('/api/wishlist', require("./routes/wishlistRoutes"));
 app.use('/api/contact', require('./routes/contactRoutes'))
 app.use('/api/payment', require('./routes/PaymentRoutes'))
 
 
 //Starting the server
 const options = {
-    key: fs.readFileSync(path.resolve(__dirname, "server.key")),
-    cert: fs.readFileSync(path.resolve(__dirname, "server.crt")),
-   
-  };
-   
-   
-  // Start HTTPS server
-  https.createServer(options, app).listen(PORT, () => {
-    console.log(`Secure server is running on port ${PORT}`);
+  key: fs.readFileSync(path.resolve(__dirname, "server.key")),
+  cert: fs.readFileSync(path.resolve(__dirname, "server.crt")),
+
+};
+
+
+// Start HTTPS server
+https.createServer(options, app).listen(PORT, () => {
+  console.log(`Secure server is running on port ${PORT}`);
 });
-module.exports= app;
+module.exports = app;
