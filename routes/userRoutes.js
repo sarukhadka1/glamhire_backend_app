@@ -31,6 +31,8 @@ router.post('/logout', authGuard, userController.logoutUser);
 
 //get user data
 router.get('/user/:id',userController.getUserDetails);
+
+router.put("/verifyEmail/:token", userController.verifyEmail);
  
 //Exporting the routes
 module.exports = router                                                                                                                 
