@@ -2,6 +2,8 @@ const userModel = require('../models/userModel')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const sendOtp = require('../service/sendOtp');
+const crypto = require('crypto');
+const sendEmail = require('../service/emailService');
 
 
 // const LOCKOUT_CONFIG = [
@@ -350,9 +352,70 @@ const getLockTime = (attempts) => {
 };
 
 // Create User Function
-const createUser = async (req, res) => {
-  const { firstName, lastName, email, phone, password } = req.body;
+// const createUser = async (req, res) => {
+//   const { firstName, lastName, email, phone, password } = req.body;
 
+//   // Check for missing fields
+//   if (!firstName || !lastName || !email || !phone || !password) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Please enter all fields!",
+//     });
+//   }
+
+//   // Validate password strength
+//   if (!isPasswordValid(password)) {
+//     return res.status(400).json({
+//       success: false,
+//       message:
+//         "Password must be 8-20 characters long, include uppercase, lowercase, numbers, and special characters!",
+//     });
+//   }
+
+//   try {
+//     const existingUser = await userModel.findOne({ email });
+
+//     if (existingUser) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "User already exists!",
+//       });
+//     }
+
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedPassword = await bcrypt.hash(password, salt);
+
+//     const newUser = new userModel({
+//       firstName,
+//       lastName,
+//       email,
+//       phone,
+//       password: hashedPassword,
+//       passwordHistory: [hashedPassword], // Add initial password to history
+//       passwordLastChanged: new Date(), // Record the password change date
+//     });
+
+//     await newUser.save();
+
+//     res.status(201).json({
+//       success: true,
+//       message: "User registered successfully!",
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal Server Error!",
+//     });
+//   }
+// };
+
+const createUser = async (req, res) => {
+  // Log incoming request data (optional, useful for debugging)
+  console.log("Incoming Request Data:", req.body);
+ 
+  const { firstName, lastName, email, phone, password } = req.body;
+ 
   // Check for missing fields
   if (!firstName || !lastName || !email || !phone || !password) {
     return res.status(400).json({
@@ -360,7 +423,7 @@ const createUser = async (req, res) => {
       message: "Please enter all fields!",
     });
   }
-
+ 
   // Validate password strength
   if (!isPasswordValid(password)) {
     return res.status(400).json({
@@ -369,20 +432,24 @@ const createUser = async (req, res) => {
         "Password must be 8-20 characters long, include uppercase, lowercase, numbers, and special characters!",
     });
   }
-
+ 
   try {
     const existingUser = await userModel.findOne({ email });
-
+ 
     if (existingUser) {
       return res.status(400).json({
         success: false,
         message: "User already exists!",
       });
     }
-
+ 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
+ 
+    // Generate email verification token
+    const verificationToken = crypto.randomBytes(20).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(verificationToken).digest("hex");
+ 
     const newUser = new userModel({
       firstName,
       lastName,
@@ -391,13 +458,32 @@ const createUser = async (req, res) => {
       password: hashedPassword,
       passwordHistory: [hashedPassword], // Add initial password to history
       passwordLastChanged: new Date(), // Record the password change date
+      isEmailVerified: false, // Initialize email verification status
+      emailVerificationToken: hashedToken, // Store hashed verification token
+      emailVerificationTokenExpire: Date.now() + 10 * 60 * 1000, // Token expires in 10 minutes
     });
-
+ 
     await newUser.save();
-
+ 
+    // Log email before sending (optional)
+    console.log("Sending verification email to:", newUser.email);
+ 
+    if (!newUser.email) {
+      console.error("Error: Email is missing in newUser");
+    } else {
+      const verificationURL = `${process.env.FRONTEND_URL || "https://localhost:3000"}/verify-email/${verificationToken}`;
+      const message = `Please click on the link to verify your email: \n\n ${verificationURL}`;
+ 
+      await sendEmail({
+        email: newUser.email,
+        subject: "Email Verification",
+        message,
+      });
+    }
+ 
     res.status(201).json({
       success: true,
-      message: "User registered successfully!",
+      message: "User registered successfully! Verification email sent.",
     });
   } catch (error) {
     console.error(error);
@@ -405,6 +491,37 @@ const createUser = async (req, res) => {
       success: false,
       message: "Internal Server Error!",
     });
+  }
+};
+
+const verifyEmail = async (req, res) => {
+  try {
+      const token = req.params.token;
+ 
+      // Hash the received token to compare with the stored one
+      const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+ 
+      // Find the user with the matching token and ensure it hasn't expired
+      const user = await userModel.findOne({
+          emailVerificationToken: hashedToken,
+          emailVerificationTokenExpire: { $gt: Date.now() }, // Ensure the token hasn't expired
+      });
+ 
+      if (!user) {
+          return res.json({ success: false, message: "Invalid or expired token" });
+      }
+ 
+      // Mark the user's email as verified
+      user.isEmailVerified = true;
+      user.emailVerificationToken = undefined; // Clear the token fields
+      user.emailVerificationTokenExpire = undefined;
+ 
+      await user.save();
+ 
+      res.json({ success: true, message: "Email verified successfully" });
+  } catch (error) {
+      console.error("Verification Error:", error);
+      res.json({ success: false, message: "Server error" });
   }
 };
 
@@ -888,5 +1005,6 @@ module.exports = {
   changePassword,
   getAllUsers,
   logoutUser,
-  getUserDetails
+  getUserDetails,
+  verifyEmail
 }
